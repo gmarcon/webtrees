@@ -26,6 +26,7 @@ use Fisharebest\Webtrees\Contracts\UserInterface;
 use Fisharebest\Webtrees\MediaFile;
 use Fisharebest\Webtrees\Mime;
 use Fisharebest\Webtrees\Registry;
+use Fisharebest\Webtrees\Site;
 use Fisharebest\Webtrees\Webtrees;
 use Imagick;
 use Intervention\Image\Constraint;
@@ -224,7 +225,13 @@ class ImageFactory implements ImageFactoryInterface
             ]);
 
             $closure = function () use ($filesystem, $path, $width, $height, $fit, $add_watermark, $media_file): string {
-                $image = $this->imageManager()->make($filesystem->readStream($path));
+                try {
+                    // The Intervention Image library needs the image object to be instantiated from file path to be able to read the EXIF Orientation:
+                    $local_file_path = Site::getPreference('INDEX_DIRECTORY') . $media_file->media()->tree()->getPreference('MEDIA_DIRECTORY') . $media_file->filename();
+                    $image = $this->imageManager()->make($local_file_path);
+                } catch (Throwable $ex) {
+                    $image = $this->imageManager()->make($filesystem->readStream($path));
+                }
                 $image = $this->autorotateImage($image);
                 $image = $this->resizeImage($image, $width, $height, $fit);
 
